@@ -1,0 +1,380 @@
+<!--
+@license
+Copyright (c) 2007-2017 The ODANT Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at https://odant.org/web/core/LICENSE.txt
+The complete set of authors may be found at https://odant.org/web/core/AUTHORS.txt
+The complete set of contributors may be found at https://odant.org/web/core/CONTRIBUTORS.txt
+Code distributed by BIS LLC as part of the ODANT project is also
+subject to an additional IP rights grant found at https://odant.org/web/core/PATENTS.txt
+-->
+
+<!--<link rel="import" href="/web/components/odant-dependence.html">-->
+
+<!--
+<h1><b>&lt;odant-calendar&gt;</b></h1>
+
+supported by [ODANT](mailto:support@odant.ru?subject=odant-example), author [Oleg Aleynikov](mailto:aleynikov.oleg@gmail.com)
+
+<b>odant-example</b> is a component example.
+
+### Links
+[odant.org](https://odant.org/)
+@hero icon.png
+@demo demo/index.html
+-->
+
+<dom-module id="odant-calendar">
+  <template>
+      <style is="custom-style" include="odant-styles">
+          .calendar {
+              height: 245px;
+              flex-wrap: wrap;
+          }
+
+          .right {
+              padding: 0 20px 0 20px;
+              width: 300px;
+              overflow-y: scroll;
+              flex: 1 0 300px;
+              max-height: 245px;
+          }
+
+          .date {
+              display: flex;
+              width: 200px;
+              @apply --header;
+              text-align: center;
+          }
+
+          .year {
+              font-size: 20px;
+          }
+
+          .month {
+              font-size: 30px;
+          }
+
+          .daynum {
+              font-size: 60px;
+          }
+
+          .date {
+              padding: 30px 0 30px 0;
+          }
+
+          .vertical-centerer {
+              margin: auto;
+          }
+      </style>
+
+      <div class="calendar horizontal">
+          <div class="date wrapper flex" on-tap="_scrollToMonth">
+              <div class="vertical-centerer">
+                  <div class="wrapper">[[_dateInfo.weekDay]]</div>
+                  <div class="month">[[_dateInfo.month]]</div>
+                  <div class="daynum">[[_dateInfo.dayNum]]</div>
+                  <odant-button class="year"  on-tap="_showYears">[[_dateInfo.year]]</odant-button>
+              </div>
+          </div>
+
+          <template is="dom-if" if="[[_daysYears]]">
+              <div class="right">
+                  <template is="dom-repeat" items="[[_months]]">
+                      <odant-calendar-month year="[[_dateInfo.year]]" _month="[[item]]" value="{{value}}" _date-info="[[_dateInfo]]"></odant-calendar-month>
+                  </template>
+              </div>
+          </template>
+
+          <template is="dom-if" if="[[!_daysYears]]">
+              <div class="right">
+                  <template is="dom-repeat" items="[[_years]]">
+                      <odant-button id="[[item]]" on-tap="_showDays">[[item]]</odant-button>
+                  </template>
+              </div>
+          </template>
+      </div>
+  </template>
+
+  <script>
+      Polymer({
+          is: 'odant-calendar',
+          properties:{
+              _months:{
+                  type: Array,
+                  value: ()=>[]
+              },
+              _monthNames:{
+                  type: Array,
+                  value: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+              },
+              _weekdays: {
+                  type: Array,
+                  value: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+              },
+              value: {
+                  type: Date,
+                  notify: true,
+                  observer: '_dateChanged'
+              },
+              _daysYears: {
+                  type: Boolean,
+                  value: true
+              },
+              _years:{
+                  type: Array,
+                  value: ()=>[]
+              },
+              _dateInfo:{
+                  type: Object,
+                  value: ()=>{
+                      return {}
+                  }
+              }
+          },
+
+          ready(){
+              this._years = this._getYearsRange(1900, 2100);
+              this._dateInfo = this._getDateInfo(new Date());
+              this._populateMonths(this._dateInfo.year);
+          },
+
+          _populateMonths(year){
+              this.splice('_months', 0, this._months.length);
+              for(let i = 0; i < this._monthNames.length; i++){
+                  this.push('_months', this._getMonthInfo(i, year));
+              }
+          },
+
+          _getDateInfo(date = new Date()){
+              let weekday = this._weekdays[date.getDay()];
+              let month = this._monthNames[date.getMonth()];
+              let dayNum = date.getDate();
+              let year = date.getFullYear();
+              return {weekDay: weekday, month: month, dayNum: dayNum, year: year};
+          },
+
+          _getMonthInfo(month, year) {
+              let date = new Date(year, month, 1);
+              let shift = date.getDay();
+              let dates = [];
+              while (date.getMonth() === month) {
+                  dates.push(new Date(date));
+                  date.setDate(date.getDate() + 1);
+              }
+              let datesArr = dates.toString().split(',');
+              let days = [];
+              for (let i = 0; i < shift; i++) {
+                  days.push(null);
+              }
+              for (let i = 0; i < datesArr.length; i++) {
+                  days.push(datesArr[i].split(' ')[2]);
+              }
+              return {days: this._getSlicedDays(days), name: this._monthNames[month], year: year};
+          },
+
+          _getSlicedDays(days){
+              let slicedDays = [];
+              let daysInWeek = this._weekdays.length;
+              let slicesNum = Math.ceil(days.length / daysInWeek);
+              for (let i = 0; i < slicesNum; i++){
+                  slicedDays.push(days.slice(daysInWeek * i, daysInWeek * (i + 1)));
+              }
+              let lastSlice = slicedDays[slicesNum-1];
+              if (lastSlice.length < daysInWeek){
+                  let emptyItemsNum = daysInWeek - lastSlice.length;
+                  for (let i = 0; i < emptyItemsNum; i++){
+                      lastSlice.push(null);
+                  }
+              }
+              return slicedDays;
+          },
+
+          _dateChanged(date) {
+              this._dateInfo = this._getDateInfo(date);
+          },
+
+          _showYears(e) {
+              this._daysYears = !this._daysYears;
+              if (e.target.localName == 'odant-button'){
+                  this.async(function(){
+                      document.getElementById(e.target.innerText).scrollIntoView();
+                  }, 100);
+              }
+          },
+
+          _showDays(e){
+              this._daysYears = !this._daysYears;
+              this.set('_dateInfo.year', e.target.innerText);
+              this._populateMonths(this._dateInfo.year);
+          },
+
+          _getYearsRange(first, last){
+              let yearsRange = [];
+              for (let year = first; year <= last; year++) {
+                  yearsRange.push(year);
+              }
+              return yearsRange;
+          },
+
+          _scrollToMonth(){
+              this.async(function(){
+                  let month = document.querySelector('.month').innerText;
+                  document.getElementById(month).scrollIntoView();
+              }, 100);
+          }
+      })
+  </script>
+</dom-module>
+
+<dom-module id="odant-calendar-month">
+    <template>
+        <style is="custom-style" include="odant-styles">
+            .month-year {
+                text-align: center;
+                margin: 30px 0 10px 0;
+            }
+
+            .weekday {
+                display: flex;
+                display: -ms-flexbox;
+                display: -webkit-flex;
+                -ms-flex-direction: row;
+                -webkit-flex-direction: row;
+                flex-direction: row;
+                padding: 4px 8px;
+                justify-content: center;
+                flex: 1 24px;
+            }
+
+            .weekday:hover{
+                border: none;
+                cursor: default;
+            }
+
+            odant-button {
+                width: 32px;
+            }
+        </style>
+        <div class="month-year bold" id="[[_monthName]]">[[_monthName]] [[_year]]</div>
+        <div class="horizontal">
+            <template is="dom-repeat" items="[[_weekdays]]">
+                <div class="flex bold weekday">[[item]]</div>
+            </template>
+        </div>
+        <template is="dom-repeat" items="[[_monthDays]]">
+            <div class="horizontal">
+                <template is="dom-repeat" items="[[item]]">
+                    <template is="dom-if" if="{{_isDayEmpty(item)}}">
+                        <div class="flex weekday">[[item]]</div>
+                    </template>
+                    <template is="dom-if" if="{{!_isDayEmpty(item)}}">
+                        <odant-button class="flex" on-tap="_tapDay" item="[[item]]">[[item]]</odant-button>
+                    </template>
+                </template>
+            </div>
+        </template>
+    </template>
+    <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+    <script>
+        Polymer({
+            is: 'odant-calendar-month',
+            properties:{
+                _month:{
+                    observer: '_monthChanged'
+                },
+                _monthDays:{
+                    notify: true
+                },
+                _weekdays:{
+                    type: Array,
+                    value:()=> ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']
+                },
+                value: {
+                    type: Object,
+                    notify: true
+                },
+                _dateInfo:{
+                    type: Object,
+                    value: ()=>{
+                        return {}
+                    }
+                },
+                _dayBackground:{
+                    type: String,
+                    value: '#E8E5E5'
+                }
+              },
+            listeners:{
+                'tap': '_onTap'
+            },
+
+            attached(){
+                if(this._month.name == this._dateInfo.month){
+                    this._setDay(this._dateInfo.month, this._dateInfo.dayNum);
+                }
+            },
+
+            _getShift(firstWeek){
+                 let shift = 0;
+                 for (let i = 0; i < firstWeek.length; i++){
+                     if (firstWeek[i] == null)
+                        shift++;
+                 }
+                 return shift;
+            },
+
+            _setDay(month, dayNum){
+                this.async(function(){
+                    $('#'+month).parent().find('odant-button').css('background', 'none');
+                    $('#'+month).parent().find('odant-button').filter(function(){return this.innerText == dayNum}).css('background', this._dayBackground);
+                }, 100);
+            },
+
+            _monthChanged(){
+                if(this._month){
+                    this._monthDays = this._month.days;
+                    this._monthName = this._month.name;
+                    this._year = this._month.year;
+                }
+            },
+
+            _tapDay(event) {
+                this._monthDays.forEach(m=>{
+                    m.active = false;
+                });
+                this.value = new Date(this._monthName + ' ' + event.model.item + ', ' + this._year);
+                let months = document.querySelectorAll('odant-calendar-month');
+                this._unselectAnyDay(months);
+                this._selectDay(event.target);
+            },
+
+            _unselectAnyDay(months){
+                for (let i = 0; i < months.length; i++){
+                    let rows = months[i].children;
+                    for (let j = 2; j < rows.length; j++){
+                        let days = rows[j].children;
+                        for (let k = 0; k < days.length; k++){
+                            if (days[k].getElementsByTagName('odant-button')){
+                                days[k].style.background = 'none';
+                            }
+                        }
+                    }
+                }
+            },
+
+            _selectDay(day){
+                day.style.background = this._dayBackground;
+            },
+
+            _getActive(item){
+                return item.active;
+            },
+
+            _isDayEmpty(day){
+                if (day == null)
+                    return true;
+                return false;
+            }
+        })
+    </script>
+</dom-module>
